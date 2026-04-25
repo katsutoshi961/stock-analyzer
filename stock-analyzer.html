@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="銘柄分析">
+<meta name="theme-color" content="#0a0f1e">
+<title>銘柄分析ツール</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #06090f;
+    --bg2: #0d1420;
+    --bg3: #131b2e;
+    --border: rgba(99,132,199,0.18);
+    --accent: #4a7cdc;
+    --accent2: #7eb8f7;
+    --gold: #c9a84c;
+    --gold2: #f0d080;
+    --text: #e8edf5;
+    --text2: #8fa0bc;
+    --danger: #e05555;
+    --success: #4caf80;
+    --card-bg: rgba(13,20,32,0.95);
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* 背景グリッド */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,124,220,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,124,220,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* 光の効果 */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(74,124,220,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== ヘッダー ===== */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(6,9,15,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: env(safe-area-inset-top, 12px) 20px 14px;
+    padding-top: max(env(safe-area-inset-top), 12px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    letter-spacing: 0.02em;
+    background: linear-gradient(90deg, var(--text), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header-hint {
+    font-size: 11px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .api-key-btn {
+    background: rgba(74,124,220,0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--accent2);
+    font-size: 11px;
+    font-family: 'Noto Sans JP', sans-serif;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .api-key-btn:active { opacity: 0.7; }
+
+  /* ===== メインコンテンツ ===== */
+  main {
+    position: relative;
+    z-index: 1;
+    padding-top: 80px;
+    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+    min-height: 100vh;
+  }
+
+  /* ===== セクション ===== */
+  .section {
+    padding: 20px;
+  }
+
+  /* ===== カード ===== */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(10px);
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-label::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ===== 入力タブ ===== */
+  .tab-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    padding: 4px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 9px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text2);
+    font-size: 13px;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-weight: 500;
+  }
+
+  .tab.active {
+    background: var(--bg3);
+    color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  /* ===== 入力フィールド ===== */
+  .input-group {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  .ticker-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 48px 14px 16px;
+    color: var(--text);
+    font-size: 20px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+
+  .ticker-input::placeholder {
+    color: var(--text2);
+    opacity: 0.5;
+    font-size: 16px;
+    letter-spacing: 0.02em;
+    font-family: 'Noto Sans JP', sans-serif;
+    text-transform: none;
+  }
+
+  .ticker-input:focus {
+    border-color: var(--accent);
+    background: rgba(74,124,220,0.06);
+  }
+
+  .input-clear {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    border-radius: 50%;
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ticker-input:not(:placeholder-shown) + .input-clear { display: flex; }
+
+  .ticker-hint {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 6px;
+    padding-left: 4px;
+  }
+
+  .text-input {
+    width: 100%;
+    min-height: 120px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.6;
+    outline: none;
+    resize: vertical;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+
+  .text-input:focus { border-color: var(--accent); }
+  .text-input::placeholder { color: rgba(143,160,188,0.5); }
+
+  .ticker-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .ticker-mini {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 16px;
+    font-family: 'DM Mono', monospace;
+    outline: none;
+    text-transform: uppercase;
+    -webkit-appearance: none;
+  }
+
+  .ticker-mini::placeholder {
+    color: var(--text2);
+    opacity: 0.5;
+    font-size: 13px;
+    text-transform: none;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+
+  /* ===== 分析ボタン ===== */
+  .analyze-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent), #2d5bb5);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(74,124,220,0.35);
+  }
+
+  .analyze-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent);
+  }
+
+  .analyze-btn:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 10px rgba(74,124,220,0.25);
+  }
+
+  .analyze-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ===== ローディング ===== */
+  .loading-card {
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .loading-spinner {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 16px;
+    border: 2px solid rgba(74,124,220,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    color: var(--text2);
+    font-size: 13px;
+  }
+
+  .loading-ticker {
+    font-family: 'DM Mono', monospace;
+    color: var(--accent2);
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    letter-spacing: 0.08em;
+  }
+
+  /* ===== 結果 ===== */
+  .result-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+
+  .result-title {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.4;
+  }
+
+  .result-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    background: rgba(74,124,220,0.15);
+    border: 1px solid rgba(74,124,220,0.3);
+    color: var(--accent2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .result-content {
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  /* マークダウン風スタイル */
+  .result-content h1, .result-content h2, .result-content h3 {
+    font-weight: 700;
+    margin: 1.2em 0 0.5em;
+    line-height: 1.3;
+  }
+
+  .result-content h1 { font-size: 16px; color: var(--accent2); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .result-content h2 { font-size: 14px; color: var(--gold2); }
+  .result-content h3 { font-size: 13.5px; color: var(--text); }
+
+  .result-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 12px;
+    overflow-x: auto;
+    display: block;
+  }
+
+  .result-content th {
+    background: rgba(74,124,220,0.12);
+    color: var(--accent2);
+    padding: 7px 10px;
+    text-align: left;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .result-content td {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  .result-content tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  .result-content strong { color: var(--gold2); font-weight: 600; }
+  .result-content em { color: var(--accent2); font-style: normal; }
+
+  .result-content blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    margin: 12px 0;
+    background: rgba(74,124,220,0.06);
+    border-radius: 0 8px 8px 0;
+    color: var(--text2);
+    font-size: 13px;
+  }
+
+  .result-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 16px 0;
+  }
+
+  .result-content code {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+
+  /* ===== アクションボタン ===== */
+  .action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .btn-secondary {
+    flex: 1;
+    padding: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text2);
+    font-size: 13px;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .btn-secondary:active { opacity: 0.7; }
+
+  .btn-gold {
+    background: rgba(201,168,76,0.12);
+    border-color: rgba(201,168,76,0.3);
+    color: var(--gold2);
+  }
+
+  /* ===== エラー ===== */
+  .error-card {
+    text-align: center;
+    padding: 30px 20px;
+  }
+
+  .error-icon { font-size: 32px; margin-bottom: 12px; }
+  .error-text { color: var(--danger); font-size: 14px; margin-bottom: 8px; }
+  .error-sub { color: var(--text2); font-size: 12px; line-height: 1.5; }
+
+  /* ===== APIキー設定モーダル ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    padding: 20px;
+    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  }
+
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px 20px;
+    animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .modal-sub {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .modal-input {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 16px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    outline: none;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+  }
+
+  .modal-input:focus { border-color: var(--accent); }
+
+  .modal-note {
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    background: rgba(201,168,76,0.08);
+    border-radius: 8px;
+    border-left: 2px solid var(--gold);
+    line-height: 1.5;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .modal-save {
+    flex: 2;
+    padding: 13px;
+    background: linear-gradient(135deg, var(--accent), #2d5bb5);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+  }
+
+  .modal-cancel {
+    flex: 1;
+    padding: 13px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text2);
+    font-size: 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+  }
+
+  /* ===== ホーム画面追加ガイド ===== */
+  .install-banner {
+    margin: 0 20px 16px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(201,168,76,0.1), rgba(74,124,220,0.08));
+    border: 1px solid rgba(201,168,76,0.25);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .install-banner.hidden { display: none; }
+
+  .install-icon { font-size: 24px; flex-shrink: 0; }
+
+  .install-text { flex: 1; }
+  .install-text strong { font-size: 12px; color: var(--gold2); display: block; margin-bottom: 2px; }
+  .install-text span { font-size: 11px; color: var(--text2); line-height: 1.4; display: block; }
+
+  .install-close {
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+
+  /* ===== ストリーミング中カーソル ===== */
+  .cursor-blink {
+    display: inline-block;
+    width: 2px;
+    height: 14px;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ===== 履歴 ===== */
+  .history-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-right: 6px;
+    margin-bottom: 6px;
+    white-space: nowrap;
+  }
+
+  .history-chip:active { background: rgba(74,124,220,0.15); }
+
+  .history-area { margin-bottom: 12px; }
+
+  /* ===== PDF添付 ===== */
+  .pdf-drop-zone {
+    margin-top: 10px;
+    border: 2px dashed rgba(99,132,199,0.35);
+    border-radius: 14px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(74,124,220,0.04);
+  }
+
+  .pdf-drop-zone:active, .pdf-drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(74,124,220,0.1);
+  }
+
+  .pdf-drop-icon { font-size: 32px; margin-bottom: 8px; }
+
+  .pdf-drop-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+
+  .pdf-drop-sub { font-size: 11px; color: var(--text2); }
+
+  .pdf-preview {
+    margin-top: 10px;
+    padding: 12px 14px;
+    background: rgba(74,124,220,0.08);
+    border: 1px solid rgba(74,124,220,0.25);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pdf-preview.hidden { display: none; }
+
+  .pdf-preview-icon { font-size: 22px; flex-shrink: 0; }
+
+  .pdf-preview-info { flex: 1; min-width: 0; }
+  .pdf-preview-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pdf-preview-size { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  .pdf-preview-remove {
+    background: rgba(224,85,85,0.15);
+    border: 1px solid rgba(224,85,85,0.3);
+    border-radius: 8px;
+    color: var(--danger);
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header>
+  <div class="header-logo">
+    <div class="logo-icon">📈</div>
+    <span class="logo-text">銘柄分析</span>
+  </div>
+  <button class="api-key-btn" onclick="openModal()">APIキー設定</button>
+</header>
+
+<!-- APIキー設定モーダル -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title">🔑 APIキー設定</div>
+    <div class="modal-sub">Anthropic APIキーを入力してください。このデバイスにのみ保存されます。</div>
+    <input type="password" class="modal-input" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+    <div class="modal-note">
+      ⚠️ APIキーはブラウザのlocalStorageに保存されます。取得先：<br>
+      console.anthropic.com → API Keys
+    </div>
+    <div class="modal-actions">
+      <button class="modal-save" onclick="saveApiKey()">保存</button>
+      <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <!-- ホーム画面追加バナー -->
+  <div class="install-banner" id="installBanner">
+    <div class="install-icon">📲</div>
+    <div class="install-text">
+      <strong>ホーム画面に追加できます</strong>
+      <span>Safari → 共有ボタン →「ホーム画面に追加」でアプリとして使えます</span>
+    </div>
+    <button class="install-close" onclick="dismissBanner()">×</button>
+  </div>
+
+  <div class="section">
+
+    <!-- 入力カード -->
+    <div class="card">
+      <div class="card-label">銘柄を入力</div>
+
+      <div class="tab-bar">
+        <button class="tab active" id="tabTicker" onclick="switchTab('ticker')">ティッカー</button>
+        <button class="tab" id="tabText" onclick="switchTab('text')">テキスト</button>
+        <button class="tab" id="tabPdf" onclick="switchTab('pdf')">PDF添付</button>
+      </div>
+
+      <!-- ティッカー入力パネル -->
+      <div id="panelTicker">
+        <div id="historyArea" class="history-area" style="display:none"></div>
+        <div class="input-group">
+          <input type="text" class="ticker-input" id="tickerInput"
+            placeholder="例：AAPL / 6902"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+            oninput="onTickerInput(this)">
+          <button class="input-clear" onclick="clearTicker()">×</button>
+        </div>
+        <div class="ticker-hint">
+          4桁数字 → 日本株テンプレート　/　英字 → 米国株テンプレート
+        </div>
+      </div>
+
+      <!-- テキスト貼り付けパネル -->
+      <div id="panelText" style="display:none">
+        <div class="ticker-row">
+          <input type="text" class="ticker-mini" id="tickerMini"
+            placeholder="ティッカー（任意）"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <textarea class="text-input" id="textInput"
+          placeholder="IRテキスト・決算サマリー・ニュース記事などを貼り付けてください。ティッカーと合わせて分析します。"
+          style="margin-top:10px"></textarea>
+      </div>
+
+      <!-- PDF添付パネル -->
+      <div id="panelPdf" style="display:none">
+        <div class="ticker-row">
+          <input type="text" class="ticker-mini" id="tickerPdf"
+            placeholder="ティッカー（任意）"
+            autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <div class="pdf-drop-zone" id="pdfDropZone" onclick="document.getElementById('pdfFileInput').click()">
+          <div class="pdf-drop-icon">📄</div>
+          <div class="pdf-drop-text">タップしてPDFを選択</div>
+          <div class="pdf-drop-sub">決算書・有価証券報告書・Annual Report など</div>
+        </div>
+        <input type="file" id="pdfFileInput" accept="application/pdf" style="display:none" onchange="onPdfSelect(this)">
+        <div id="pdfPreview" class="pdf-preview hidden"></div>
+      </div>
+
+      <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()" style="margin-top:14px">
+        🔍 &nbsp;分析を実行する
+      </button>
+    </div>
+
+    <!-- 結果カード -->
+    <div id="resultArea"></div>
+
+  </div>
+</main>
+
+<script>
+// ===== 設定 =====
+const MODEL = 'claude-sonnet-4-20250514';
+const API_URL = 'https://api.anthropic.com/v1/messages';
+
+const SYSTEM_PROMPT = `以下のルールでレポートを生成してください。
+
+- 入力が4桁数字 → 【日本株テンプレート】を使用
+- 入力が英字ティッカー → 【米国株テンプレート】を使用
+- 出力は日本語、重要指標は太字、YoY10%超悪化は⚠️マーク
+- レポートのタイトルは作成日（YYYYMMDD）＋会社名（日本株は日本語、米国株はアルファベット）＋銘柄分析レポート
+
+【日本株テンプレート】
+# 個別銘柄分析レポート【日本株】
+
+## 1. 銘柄基本情報
+| 項目 | 内容 |
+|------|------|
+| 銘柄名 | |
+| 証券コード | |
+| 市場 | 東証プライム / スタンダード / グロース |
+| 業種 | |
+| 時価総額 | 　円 |
+| 株価（分析日） | 　円 |
+| 配当利回り（予） | 　% |
+| 分析基準日 | |
+| 決算期 | |
+
+## 2. ビジネスモデル・競争優位性
+### 事業概要
+- セグメント構成：
+- 主要製品・サービス：
+- 収益モデル（ストック型 / フロー型）：
+### 経済的堀（モート）
+- **ブランド力：**
+- **スイッチングコスト：**
+- **コスト優位性：**
+- **ネットワーク効果：**
+- **参入障壁：**
+
+## 3. 財務分析（主要指標 YoY比較）
+> ⚠️ 前期比10%超悪化の項目は太字＋⚠️でマーク
+
+| 指標 | 前々期 | 前期 | 今期（予） | YoY変化率 |
+|------|--------|------|------------|-----------|
+| 売上高（億円） | | | | |
+| 営業利益（億円） | | | | |
+| 営業利益率（%） | | | | |
+| 経常利益（億円） | | | | |
+| 純利益（億円） | | | | |
+| EPS（円） | | | | |
+| 営業CF（億円） | | | | |
+| フリーCF（億円） | | | | |
+| 有利子負債（億円） | | | | |
+| 自己資本比率（%） | | | | |
+
+### キャッシュフロー評価
+- 営業CFの質（利益との乖離）：
+- 設備投資の水準：
+- FCF創出力：
+
+## 4. 収益性・効率性指標（ピア比較）
+| 指標 | 当該銘柄 | 同業A | 同業B | 業界平均 |
+|------|----------|-------|-------|----------|
+| ROE（%） | | | | |
+| ROA（%） | | | | |
+| 営業利益率（%） | | | | |
+| 売上高成長率（%） | | | | |
+| 総資産回転率（回） | | | | |
+
+## 5. バリュエーション
+### 理論株価（DCF法）
+- 割引率（WACC）：　%
+- 永続成長率：　%
+- **DCF理論株価：　円**
+### PEGレシオ
+- PER：　倍
+- 予想EPS成長率：　%
+- **PEGレシオ：　（1.0未満で割安目安）**
+### グレアム数
+- EPS（直近実績）：　円
+- BPS（直近実績）：　円
+- **グレアム数：√(22.5 × EPS × BPS) = 　円**
+- 現在株価との乖離：　%（割安 / 割高）
+### マルチプル法
+| 指標 | 当該銘柄 | 同業平均 | 割安/適正/割高 |
+|------|----------|----------|----------------|
+| PER（倍） | | | |
+| PBR（倍） | | | |
+| PSR（倍） | | | |
+| EV/EBITDA（倍） | | | |
+| 配当利回り（%） | | | |
+### バリュエーション総合判断
+-
+
+## 6. 成長戦略・リスクマトリクス
+### 成長ドライバー
+1.
+2.
+3.
+### リスクマトリクス
+| リスク要因 | 発生確率 | 影響度 | 対応策・モニタリング指標 |
+|------------|----------|--------|--------------------------|
+| | 高/中/低 | 高/中/低 | |
+| | 高/中/低 | 高/中/低 | |
+| | 高/中/低 | 高/中/低 | |
+
+## 7. 株主還元・配当分析
+| 項目 | 前々期 | 前期 | 今期（予） |
+|------|--------|------|------------|
+| 一株配当（円） | | | |
+| 配当性向（%） | | | |
+| 配当利回り（%） | | | |
+| 自社株買い（億円） | | | |
+| 総還元性向（%） | | | |
+- 増配継続年数：　年
+- 配当方針（累進 / 安定 / 業績連動）：
+- **配当安全性評価：**
+
+## 8. ガバナンス評価
+### 取締役会構成
+- 取締役総数：　名（社内：　名、社外：　名）
+- 社外取締役比率：　%
+- 女性取締役比率：　%
+### 出席率・在任期間チェック
+> ⚠️ 出席率80%未満 または 在任5年超の取締役は要注意
+| 氏名 | 区分 | 在任年数 | 出席率 | 懸念 |
+|------|------|----------|--------|------|
+| | | | | |
+### 報酬と業績の連動性
+- 固定報酬 / 変動報酬の比率：
+- 業績連動指標（KPI）：
+- **ペイ・フォー・パフォーマンス評価：**
+
+## 9. 投資判断・目標株価
+| 項目 | 内容 |
+|------|------|
+| **投資推奨** | 強い買い / 買い / 中立 / 売り |
+| **目標株価** | 　円（現在比　%） |
+| **押し目買いレベル** | 　円（配当利回り　%相当） |
+| **投資ホライズン** | 短期 / 中期 / 長期 |
+| **ポジションサイズ** | コア / サテライト |
+### 投資テーゼ（3行サマリー）
+>
+### 前提条件・モニタリング指標
+- この推奨が崩れる条件：
+- 定期確認すべきKPI：
+
+---
+【米国株テンプレート】
+# 個別銘柄分析レポート【米国株】
+
+## 1. 銘柄基本情報
+| 項目 | 内容 |
+|------|------|
+| 銘柄名 | |
+| ティッカー | |
+| 取引所 | NYSE / NASDAQ |
+| セクター / 業種 | |
+| 時価総額 | $　B |
+| 株価（分析日） | $　|
+| 配当利回り（予） | 　% |
+| 分析基準日 | |
+| 決算期 | FY（　月期） |
+| 会計基準 | US GAAP / IFRS |
+
+## 2. ビジネスモデル・競争優位性
+### 事業概要
+- セグメント構成（売上比率）：
+- 主要製品・サービス：
+- 収益モデル（サブスク / トランザクション / ライセンス等）：
+- 地域別売上比率（米国内 / 海外）：
+### 経済的堀（Moat）
+- **ブランド力：**
+- **スイッチングコスト：**
+- **コスト優位性：**
+- **ネットワーク効果：**
+- **無形資産（特許・規制ライセンス）：**
+
+## 3. 財務分析（主要指標 YoY比較）
+> ⚠️ 前期比10%超悪化の項目は太字＋⚠️でマーク
+| 指標 | FY-2 | FY-1 | FY（予） | YoY変化率 |
+|------|------|------|----------|-----------|
+| 売上高（$M） | | | | |
+| 売上総利益率（%） | | | | |
+| 営業利益（$M） | | | | |
+| 営業利益率（%） | | | | |
+| EBITDA（$M） | | | | |
+| 純利益（$M） | | | | |
+| EPS（diluted, $） | | | | |
+| 営業CF（$M） | | | | |
+| フリーCF（$M） | | | | |
+| 設備投資CapEx（$M） | | | | |
+| 純有利子負債（$M） | | | | |
+| 自己資本比率（%） | | | | |
+### キャッシュフロー評価
+- 営業CFの質（Accruals ratio等）：
+- FCF conversion率（FCF / 純利益）：
+- CapEx intensity（CapEx / 売上）：
+
+## 4. 収益性・効率性指標（ピア比較）
+| 指標 | 当該銘柄 | 同業A | 同業B | S&P500平均 |
+|------|----------|-------|-------|------------|
+| ROE（%） | | | | |
+| ROIC（%） | | | | |
+| ROA（%） | | | | |
+| 営業利益率（%） | | | | |
+| FCFマージン（%） | | | | |
+| 売上高成長率（%） | | | | |
+
+## 5. バリュエーション
+### 理論株価（DCF法）
+- WACC：　%
+- 永続成長率（Terminal Growth Rate）：　%
+- **DCF理論株価：$**
+### PEGレシオ
+- PER：　倍
+- 予想EPS成長率（3〜5年CAGR）：　%
+- **PEGレシオ：　（1.0未満で割安目安）**
+### グレアム数
+- EPS（直近実績, $）：
+- BPS（直近実績, $）：
+- **グレアム数：√(22.5 × EPS × BPS) = $**
+- 現在株価との乖離：　%（割安 / 割高）
+### マルチプル法
+| 指標 | 当該銘柄 | 同業平均 | 割安/適正/割高 |
+|------|----------|----------|----------------|
+| PER（倍） | | | |
+| EV/EBITDA（倍） | | | |
+| P/FCF（倍） | | | |
+| PBR（倍） | | | |
+| PSR（倍） | | | |
+| 配当利回り（%） | | | |
+### バリュエーション総合判断
+-
+
+## 6. 成長戦略・リスクマトリクス
+### 成長ドライバー
+1.
+2.
+3.
+### リスクマトリクス
+| リスク要因 | 発生確率 | 影響度 | 対応策・モニタリング指標 |
+|------------|----------|--------|--------------------------|
+| 金利上昇 / ドル高 | 高/中/低 | 高/中/低 | |
+| 規制・訴訟リスク | 高/中/低 | 高/中/低 | |
+| 競合の台頭 | 高/中/低 | 高/中/低 | |
+| | 高/中/低 | 高/中/低 | |
+
+## 7. 株主還元・配当分析
+| 項目 | FY-2 | FY-1 | FY（予） |
+|------|------|------|----------|
+| 一株配当（$） | | | |
+| 配当性向（%） | | | |
+| 配当利回り（%） | | | |
+| 自社株買い（$M） | | | |
+| 総還元性向（%） | | | |
+- 増配継続年数：　年（Dividend Aristocrat / King 該当：有 / 無）
+- 配当方針：
+- **配当安全性（FCFカバレッジ）：**
+
+## 8. ガバナンス評価
+### 取締役会構成
+- 取締役総数：　名（Independent：　名）
+- Independent Director比率：　%
+- 女性取締役比率：　%
+- CEOと会長の分離：有 / 無
+### 出席率・在任期間チェック
+> ⚠️ 出席率80%未満 または 在任5年超の取締役は要注意
+| 氏名 | 区分 | 在任年数 | 出席率 | 懸念 |
+|------|------|----------|--------|------|
+| | | | | |
+### 報酬と業績の連動性（Say-on-Pay）
+- 固定 / 変動報酬比率：
+- 業績連動KPI（TSR / EPS / ROIC等）：
+- 直近のSay-on-Pay承認率：　%
+- **ペイ・フォー・パフォーマンス評価：**
+
+## 9. 投資判断・目標株価
+| 項目 | 内容 |
+|------|------|
+| **投資推奨** | Strong Buy / Buy / Hold / Sell |
+| **目標株価** | $　（現在比　%、USD建て） |
+| **押し目買いレベル** | $　（配当利回り　%相当） |
+| **投資ホライズン** | 短期 / 中期 / 長期 |
+| **ポジションサイズ** | コア / サテライト |
+| **為替前提** | 1USD = 　円 |
+### 投資テーゼ（3行サマリー）
+>
+### 前提条件・モニタリング指標
+- この推奨が崩れる条件：
+- 定期確認すべきKPI（決算発表・ガイダンス等）：
+- 次回チェック予定日：`;
+
+// ===== 状態 =====
+let currentTab = 'ticker';
+let isAnalyzing = false;
+let analysisHistory = JSON.parse(localStorage.getItem('analysisHistory') || '[]');
+
+// ===== 初期化 =====
+window.addEventListener('DOMContentLoaded', () => {
+  renderHistory();
+  // PWAインストール済みならバナー非表示
+  if (window.navigator.standalone === true || localStorage.getItem('bannerDismissed')) {
+    document.getElementById('installBanner').classList.add('hidden');
+  }
+  // APIキー確認
+  const key = localStorage.getItem('anthropicApiKey');
+  if (!key) {
+    setTimeout(openModal, 600);
+  }
+
+  // PDFドラッグ&ドロップ
+  const zone = document.getElementById('pdfDropZone');
+  if (zone) {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const input = document.getElementById('pdfFileInput');
+        input.files = dt.files;
+        onPdfSelect(input);
+      }
+    });
+  }
+});
+
+// ===== タブ切替 =====
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabTicker').classList.toggle('active', tab === 'ticker');
+  document.getElementById('tabText').classList.toggle('active', tab === 'text');
+  document.getElementById('tabPdf').classList.toggle('active', tab === 'pdf');
+  document.getElementById('panelTicker').style.display = tab === 'ticker' ? '' : 'none';
+  document.getElementById('panelText').style.display = tab === 'text' ? '' : 'none';
+  document.getElementById('panelPdf').style.display = tab === 'pdf' ? '' : 'none';
+}
+
+// ===== ティッカー入力 =====
+function onTickerInput(el) {
+  el.value = el.value.toUpperCase();
+}
+
+function clearTicker() {
+  document.getElementById('tickerInput').value = '';
+  document.getElementById('tickerInput').focus();
+}
+
+// ===== 履歴 =====
+function renderHistory() {
+  const area = document.getElementById('historyArea');
+  if (!analysisHistory.length) { area.style.display = 'none'; return; }
+  area.style.display = '';
+  area.innerHTML = analysisHistory.slice(0, 6).map(t =>
+    `<span class="history-chip" onclick="selectHistory('${t}')">${t}</span>`
+  ).join('');
+}
+
+function selectHistory(ticker) {
+  document.getElementById('tickerInput').value = ticker;
+}
+
+function addHistory(ticker) {
+  analysisHistory = [ticker, ...analysisHistory.filter(t => t !== ticker)].slice(0, 10);
+  localStorage.setItem('analysisHistory', JSON.stringify(analysisHistory));
+  renderHistory();
+}
+
+// ===== APIキーモーダル =====
+function openModal() {
+  const key = localStorage.getItem('anthropicApiKey') || '';
+  document.getElementById('apiKeyInput').value = key;
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { alert('APIキーを入力してください'); return; }
+  localStorage.setItem('anthropicApiKey', key);
+  closeModal();
+}
+
+// ===== バナー =====
+function dismissBanner() {
+  document.getElementById('installBanner').classList.add('hidden');
+  localStorage.setItem('bannerDismissed', '1');
+}
+
+// ===== PDF処理 =====
+let pdfBase64 = null;
+let pdfFileName = '';
+
+function onPdfSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.type !== 'application/pdf') { alert('PDFファイルを選択してください'); return; }
+  if (file.size > 32 * 1024 * 1024) { alert('ファイルサイズは32MB以内にしてください'); return; }
+
+  pdfFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pdfBase64 = e.target.result.split(',')[1];
+    const sizeKB = (file.size / 1024).toFixed(0);
+    const sizeTxt = file.size > 1024*1024 ? `${(file.size/1024/1024).toFixed(1)} MB` : `${sizeKB} KB`;
+    document.getElementById('pdfPreview').classList.remove('hidden');
+    document.getElementById('pdfPreview').innerHTML = `
+      <div class="pdf-preview-icon">📄</div>
+      <div class="pdf-preview-info">
+        <div class="pdf-preview-name">${file.name}</div>
+        <div class="pdf-preview-size">${sizeTxt}</div>
+      </div>
+      <button class="pdf-preview-remove" onclick="removePdf()">削除</button>`;
+    document.getElementById('pdfDropZone').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePdf() {
+  pdfBase64 = null;
+  pdfFileName = '';
+  document.getElementById('pdfFileInput').value = '';
+  document.getElementById('pdfPreview').classList.add('hidden');
+  document.getElementById('pdfPreview').innerHTML = '';
+  document.getElementById('pdfDropZone').style.display = '';
+}
+
+// ドラッグ&ドロップ対応
+window.addEventListener('DOMContentLoaded', () => {
+  const zone = document.getElementById('pdfDropZone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const input = document.getElementById('pdfFileInput');
+      input.files = dt.files;
+      onPdfSelect(input);
+    }
+  });
+});
+
+
+function md2html(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // ブロック要素（先に処理）
+    .replace(/^---+$/gm, '<hr>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    // テーブル
+    .replace(/(\|.+\|\n)+/g, m => {
+      const rows = m.trim().split('\n');
+      let html = '<table>';
+      rows.forEach((row, i) => {
+        if (/^\|[-:| ]+\|$/.test(row)) return;
+        const cells = row.split('|').slice(1,-1);
+        const tag = i === 0 ? 'th' : 'td';
+        html += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+      });
+      return html + '</table>';
+    })
+    // インライン
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    // 改行
+    .replace(/\n/g, '<br>');
+}
+
+// ===== 分析実行 =====
+async function runAnalysis() {
+  if (isAnalyzing) return;
+
+  const apiKey = localStorage.getItem('anthropicApiKey');
+  if (!apiKey) { openModal(); return; }
+
+  let ticker = '';
+  let userContent = '';
+
+  if (currentTab === 'ticker') {
+    ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+    if (!ticker) { alert('ティッカーまたは証券コードを入力してください'); return; }
+    userContent = `銘柄：${ticker}\n\n上記の銘柄について、最新の公開情報をもとに分析レポートを作成してください。`;
+  } else if (currentTab === 'text') {
+    ticker = document.getElementById('tickerMini').value.trim().toUpperCase();
+    const text = document.getElementById('textInput').value.trim();
+    if (!text && !ticker) { alert('テキストまたはティッカーを入力してください'); return; }
+    userContent = ticker ? `銘柄：${ticker}\n\n参考情報：\n${text}` : `以下のテキストから銘柄を特定し分析してください：\n\n${text}`;
+  } else {
+    // PDFタブ
+    ticker = document.getElementById('tickerPdf').value.trim().toUpperCase();
+    if (!pdfBase64) { alert('PDFファイルを選択してください'); return; }
+    const tickerNote = ticker ? `銘柄コード/ティッカー：${ticker}\n\n` : '';
+    userContent = [
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
+      { type: 'text', text: `${tickerNote}添付の決算書・IRレポートをもとに、銘柄分析レポートを作成してください。銘柄名・ティッカー・証券コードが記載されている場合はそれを優先してください。` }
+    ];
+  }
+
+  if (ticker) addHistory(ticker);
+
+  isAnalyzing = true;
+  document.getElementById('analyzeBtn').disabled = true;
+
+  // ローディング表示
+  document.getElementById('resultArea').innerHTML = `
+    <div class="card loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-ticker">${ticker || '分析中'}</div>
+      <div class="loading-text">Claude がレポートを生成しています…</div>
+    </div>`;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userContent }],
+        stream: true
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    // ストリーミング処理
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+
+    document.getElementById('resultArea').innerHTML = `
+      <div class="card" id="resultCard">
+        <div class="result-header">
+          <div class="result-title">📄 分析レポート（${dateStr}）</div>
+          <div class="result-badge">${ticker || 'TEXT'}</div>
+        </div>
+        <div class="result-content" id="resultContent"><span class="cursor-blink"></span></div>
+      </div>`;
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data === '[DONE]') continue;
+        try {
+          const json = JSON.parse(data);
+          if (json.type === 'content_block_delta' && json.delta?.text) {
+            fullText += json.delta.text;
+            document.getElementById('resultContent').innerHTML =
+              md2html(fullText) + '<span class="cursor-blink"></span>';
+            // 自動スクロール
+            document.getElementById('resultContent').scrollIntoView({ block: 'end', behavior: 'smooth' });
+          }
+        } catch {}
+      }
+    }
+
+    // 完了
+    document.getElementById('resultContent').innerHTML = md2html(fullText);
+
+    // アクションボタン追加
+    document.getElementById('resultCard').insertAdjacentHTML('beforeend', `
+      <div class="action-row">
+        <button class="btn-secondary btn-gold" onclick="copyResult()">📋 コピー</button>
+        <button class="btn-secondary" onclick="clearResult()">✕ 閉じる</button>
+      </div>`);
+
+    // テキスト保存（コピー用）
+    document.getElementById('resultCard').dataset.raw = fullText;
+
+  } catch (e) {
+    const isAuthErr = e.message?.includes('authentication') || e.message?.includes('401') || e.message?.includes('API key');
+    document.getElementById('resultArea').innerHTML = `
+      <div class="card error-card">
+        <div class="error-icon">⚠️</div>
+        <div class="error-text">${isAuthErr ? 'APIキーが無効です' : 'エラーが発生しました'}</div>
+        <div class="error-sub">${e.message}<br><br>${isAuthErr ? '<button class="api-key-btn" onclick="openModal()" style="display:inline-block;padding:8px 16px">APIキーを再設定</button>' : '時間をおいて再試行してください'}</div>
+      </div>`;
+  } finally {
+    isAnalyzing = false;
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+function copyResult() {
+  const raw = document.getElementById('resultCard')?.dataset.raw || '';
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(raw).then(() => alert('クリップボードにコピーしました'));
+  } else {
+    alert('このブラウザではコピーできません');
+  }
+}
+
+function clearResult() {
+  document.getElementById('resultArea').innerHTML = '';
+}
+</script>
+</body>
+</html>
